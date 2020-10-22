@@ -56,4 +56,31 @@ contract("People", async function(accounts){
         await instance.createPerson("Lisa", 35, 160, {from: accounts[1], value: web3.utils.toWei("1", "ether")});
         await TruffleAssert.passes(instance.deletePerson(accounts[1], {from: accounts[0]}));
     });
+    it("should allow the owner to withdraw balance of contract)", async function(){
+        let instance = await People.new(); // creates a new contract instance
+        await instance.createPerson("Lisa", 35, 160, {from: accounts[2], value: web3.utils.toWei("1", "ether")});
+        await TruffleAssert.passes(instance.withdrawAll({from: accounts[0]}));
+    });
+    it("should not allow the non-owner to withdraw balance of contract)", async function(){
+        let instance = await People.new(); // creates a new contract instance
+        await instance.createPerson("Lisa", 35, 160, {from: accounts[2], value: web3.utils.toWei("1", "ether")});
+        await TruffleAssert.fails(instance.withdrawAll({from: accounts[2]}), TruffleAssert.ErrorType.REVERT);
+    });
+    it("owners balance should increase after withdraw)", async function(){
+        let instance = await People.new(); // creates a new contract instance
+        await instance.createPerson("Lisa", 35, 160, {from: accounts[2], value: web3.utils.toWei("1", "ether")});
+        let balanceBefore = parseFloat(await web3.eth.getBalance(accounts[0]));
+        await instance.withdrawAll();
+        let balanceAfter = parseFloat(await web3.eth.getBalance(accounts[0]));
+        assert(balanceBefore < balanceAfter, "owners balance was not increase after withdrawl");
+    });
+    it("should reset balance to 0 after withdraw and balance should match balance on blockchain)", async function(){
+        let instance = await People.new(); // creates a new contract instance
+        await instance.createPerson("Lisa", 35, 160, {from: accounts[2], value: web3.utils.toWei("1", "ether")});
+        await instance.withdrawAll();
+        let balance = await instance.balance();
+        let floatBalance = parseFloat(balance);
+        let realBalance = await web3.eth.getBalance(instance.address);
+        assert(floatBalance == web3.utils.toWei("0", "ether") && floatBalance == realBalance, "contract balance does is not zero");
+    });
 });
